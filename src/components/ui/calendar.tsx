@@ -5,10 +5,12 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isTod
 import { FaChevronLeft, FaChevronRight, FaTimes, FaEdit, FaTrash } from 'react-icons/fa';
 
 interface Task {
-  id: string;
+  id: number;
   text: string;
   date: string;
   time: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 interface CalendarProps {
@@ -182,7 +184,21 @@ export function Calendar({ tasks, onDateClick, onEditTask, onDeleteTask, shouldR
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-gray-900 break-words">{task.text}</div>
                       <div className="text-sm text-gray-600 mt-1">
-                        Time: {format(parse(task.time, 'HH:mm', new Date()), 'h:mm a')}
+                        Time: {(() => {
+                          try {
+                            if (task.time && typeof task.time === 'string' && task.time.trim() !== '') {
+                              // Handle both HH:mm and HH:mm:ss formats
+                              const timeFormat = task.time.includes(':') && task.time.split(':').length === 3 ? 'HH:mm:ss' : 'HH:mm';
+                              const timeDate = parse(task.time, timeFormat, new Date());
+                              return format(timeDate, 'h:mm a');
+                            } else {
+                              return 'No time set';
+                            }
+                          } catch (error) {
+                            console.error('Error parsing time in calendar:', task.time, error);
+                            return 'Invalid time';
+                          }
+                        })()}
                       </div>
                     </div>
                     <div className="flex gap-2 ml-3">
