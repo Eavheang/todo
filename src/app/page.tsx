@@ -14,6 +14,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal";
 import { FaInfoCircle, FaEdit, FaList, FaCalendarAlt, FaTrash } from 'react-icons/fa';
 import { createTask, getAllTasks, updateTask, deleteTask } from "@/actions/task";
+import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
+import { Check } from 'lucide-react';
 
 interface Task {
   id: number; 
@@ -22,6 +24,7 @@ interface Task {
   time: string;
   createdAt: Date;
   updatedAt: Date;
+  completed: boolean;           // ← new
 }
 
 export default function Home() {
@@ -37,9 +40,6 @@ export default function Home() {
   const [currentView, setCurrentView] = useState<'list' | 'calendar'>('list');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
-  const [editOpenedFromCalendar, setEditOpenedFromCalendar] = useState(false);
-  const [calendarDateForReopen, setCalendarDateForReopen] = useState<Date | null>(null);
-  const [shouldReopenCalendarModal, setShouldReopenCalendarModal] = useState<{ date: Date; shouldOpen: boolean } | undefined>();
 
   // Load tasks on component mount
   useEffect(() => {
@@ -64,10 +64,10 @@ export default function Home() {
         const newTaskItem = await createTask({
           text: taskText,
           date: newDate,
-          time: newTime
+          time: newTime,
         });
-        
-        setTasks([...tasks, newTaskItem]);
+        // default completed to false
+        setTasks([...tasks, { ...newTaskItem, completed: false }]);
         setNewTask("");
         setNewDate("");
         setNewTime("");
@@ -81,17 +81,11 @@ export default function Home() {
     }
   };
 
-  const openEditModal = (task: Task, fromCalendar = false) => {
+  const openEditModal = (task: Task) => {
     setSelectedTask(task);
     setEditedTaskText(task.text);
     setEditedTaskDate(task.date);
     setEditedTaskTime(task.time);
-    setEditOpenedFromCalendar(fromCalendar);
-    if (fromCalendar) {
-      // Store the date of the task for reopening the calendar modal
-      const taskDate = new Date(task.date + 'T00:00:00');
-      setCalendarDateForReopen(taskDate);
-    }
     setIsEditModalOpen(true);
   };
 
@@ -99,13 +93,6 @@ export default function Home() {
     setIsEditModalOpen(false);
     setSelectedTask(null);
     
-    // If edit was opened from calendar, reopen the calendar task modal
-    if (editOpenedFromCalendar && calendarDateForReopen) {
-      setShouldReopenCalendarModal({ date: calendarDateForReopen, shouldOpen: true });
-    }
-    
-    setEditOpenedFromCalendar(false);
-    setCalendarDateForReopen(null);
   };
 
   const handleEditTask = async () => {
@@ -129,8 +116,6 @@ export default function Home() {
         setTasks(updatedTasks);
         setIsEditModalOpen(false);
         setSelectedTask(null);
-        setEditOpenedFromCalendar(false);
-        setCalendarDateForReopen(null);
         toast.success("Task updated successfully!");
       }
     } catch (error) {
@@ -170,9 +155,19 @@ export default function Home() {
     }
   };
 
-  const handleCalendarModalReopened = () => {
-    setShouldReopenCalendarModal(undefined);
+  const handleToggleTaskCompletion = async (taskId: number, checked: boolean) => {
+    try {
+      await updateTask(taskId, { completed: checked });
+      setTasks(tasks.map(t =>
+        t.id === taskId ? { ...t, completed: checked } : t
+      ));
+      toast.success(`Task ${checked ? 'completed' : 'uncompleted'} successfully!`);
+    } catch (error) {
+      toast.error("Failed to update task status");
+      console.error(error);
+    }
   };
+
 
   return (
     <main className="flex min-h-screen flex-col items-center p-8 bg-gray-50 mx-auto">
@@ -255,31 +250,33 @@ export default function Home() {
             {currentView === 'list' ? (
               tasks.length > 0 ? (
                 <ul className="space-y-3">
-                  {tasks.map((task) => {
-                    // Add validation for time before parsing
-                    let formattedTime = 'Invalid time';
-                    try {
-                      if (task.time && typeof task.time === 'string' && task.time.trim() !== '') {
-                        // Handle both HH:mm and HH:mm:ss formats
-                        const timeFormat = task.time.includes(':') && task.time.split(':').length === 3 ? 'HH:mm:ss' : 'HH:mm';
-                        const timeDate = parse(task.time, timeFormat, new Date());
-                        formattedTime = format(timeDate, 'h:mm a');
-                      } else {
-                        formattedTime = 'No time set';
-                      }
-                    } catch (error) {
-                      console.error('Error parsing time:', task.time, error);
-                      formattedTime = 'Invalid time';
-                    }
-                    
-                    return (
-                      <li
-                        key={task.id}
-                        className="flex items-center justify-between p-4 bg-gray-100 rounded-lg gap-4"
-                    >
-                      <span className="text-gray-900 truncate min-w-0" title={task.text}>{task.text}</span>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-medium text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap">{`${task.date} at ${formattedTime}`}</span>
+                  {tasks.map(task => (
+                    <li key={task.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <label className="flex items-center gap-3 min-w-0">
+                        <CheckboxPrimitive.Root
+                          checked={task.completed}
+                          onCheckedChange={checked => handleToggleTaskCompletion(task.id, checked as boolean)}
+                          className="flex-shrink-0 h-5 w-5 rounded border border-gray-400 flex items-center justify-center text-blue-500"
+                        >
+                          <CheckboxPrimitive.Indicator>
+                            <Check className="h-4 w-4" />
+                          </CheckboxPrimitive.Indicator>
+                        </CheckboxPrimitive.Root>
+
+                        <span
+                          className={`flex-1 min-w-0 break-words ${
+                            task.completed ? 'line-through text-gray-400' : 'text-gray-900'
+                          }`}
+                          title={task.text}
+                        >
+                          {task.text}
+                        </span>
+                      </label>
+
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="px-3 py-1 bg-gray-200 rounded-full text-sm text-gray-600">
+                          {task.date} at {task.time}
+                        </span>
                         <div className="flex gap-2">
                           <Dialog>
                             <DialogTrigger asChild>
@@ -308,12 +305,16 @@ export default function Home() {
                                         {(() => {
                                           try {
                                             if (task.time && typeof task.time === 'string' && task.time.trim() !== '') {
-                                              const timeDate = parse(task.time, 'HH:mm', new Date());
+                                              // Determine whether to use HH:mm or HH:mm:ss format
+                                              const timeParts = task.time.split(':');
+                                              const timeFormat = timeParts.length === 3 ? 'HH:mm:ss' : 'HH:mm';
+                                              const timeDate = parse(task.time, timeFormat, new Date());
                                               return format(timeDate, 'h:mm a');
                                             } else {
                                               return 'No time set';
                                             }
-                                          } catch {
+                                          } catch (error) {
+                                            console.error('Error parsing time in details:', task.time, error);
                                             return 'Invalid time';
                                           }
                                         })()}
@@ -340,8 +341,7 @@ export default function Home() {
                         </div>
                       </div>
                     </li>
-                  );
-                })}
+                  ))}
                 </ul>
               ) : (
                 <p className="text-center text-gray-500 py-4">
@@ -349,22 +349,17 @@ export default function Home() {
                 </p>
               )
             ) : (
-              <Calendar 
-                tasks={tasks} 
-                onDateClick={(date) => {
-                  const dateString = format(date, 'yyyy-MM-dd');
-                  setNewDate(dateString);
-                  setCurrentView('list');
-                }}
-                onEditTask={(task) => {
-                  openEditModal(task, true);
-                }}
-                onDeleteTask={(task) => {
-                  openDeleteModal(task);
-                }}
-                shouldReopenTaskModal={shouldReopenCalendarModal}
-                onTaskModalReopened={handleCalendarModalReopened}
-              />
+                <Calendar
+                  tasks={tasks}
+                  onDateClick={(date) => {
+                    const dateString = format(date, 'yyyy-MM-dd');
+                    setNewDate(dateString);
+                    setCurrentView('list');
+                  }}
+                  onEditTask={(task) => openEditModal(task)}
+                  onDeleteTask={(task) => openDeleteModal(task)}
+                  onToggleTaskCompletion={handleToggleTaskCompletion}
+                />
             )}
           </div>
         </div>

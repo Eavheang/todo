@@ -25,7 +25,7 @@ function normalizeTime(timeInput: string): string {
     const timeParts = trimmedTime.split(':');
     const hours = timeParts[0];
     const minutes = timeParts[1];
-    const seconds = timeParts[2] || '00'; // Default to '00' if no seconds provided
+    const seconds = timeParts[2] || '00'; 
     const hour = parseInt(hours, 10);
     
     if (hour >= 0 && hour <= 23) {
@@ -76,7 +76,7 @@ export async function createTask(taskData: Omit<NewTask, 'id' | 'createdAt' | 'u
     const [newTask] = await db.insert(tasks).values({
       text: taskData.text,
       date: taskData.date,
-      time: normalizeTime(taskData.time), // Use the new function
+      time: normalizeTime(taskData.time), 
     }).returning();
     
     return newTask;
@@ -105,9 +105,8 @@ export async function updateTask(id: number, taskData: Partial<Omit<NewTask, 'id
       updatedAt: new Date() 
     };
     
-    // Convert time format if time is being updated
     if (taskData.time) {
-      updateData.time = normalizeTime(taskData.time); // Use the new function
+      updateData.time = normalizeTime(taskData.time);
     }
     
     const [updatedTask] = await db
