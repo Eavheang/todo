@@ -132,14 +132,22 @@ todo/
 
 ### Key Files and Directories
 
-- **src/app/globals.css** - Contains Tailwind CSS imports, custom CSS variables for theming (light/dark mode), and base styles
-- **src/components/** - Reusable React components including UI primitives, forms, and custom components
-- **src/lib/** - Utility functions, database configuration, and shared logic
-- **src/types/** - TypeScript type definitions for the application
-- **drizzle/meta/0000_snapshot.json** - Contains the complete database schema definition including the tasks table structure
-- **drizzle/meta/_journal.json** - Tracks migration history and metadata
-- **eslint.config.mjs** - ESLint configuration using the new flat config format
-- **package.json** - Project dependencies including Next.js 15, React 19, Drizzle ORM, Tailwind CSS v4, and other packages
+- **src/app/** - Contains the main application logic, including global styles, layout, and main page component.
+- **src/components/** - Reusable React components, including UI primitives, forms, and custom components.
+- **src/actions/** - Server actions for handling task operations.
+- **src/db/** - Database connection and schema definitions.
+- **src/lib/** - Utility functions and shared logic.
+- **drizzle/** - Contains database schema, migrations, and metadata.
+  - **drizzle/meta/0000_snapshot.json** - Database schema definition.
+  - **drizzle/meta/_journal.json** - Migration history and metadata.
+- **public/** - Static assets.
+- **.env.local** - Environment variables (create this file).
+- **drizzle.config.ts** - Drizzle configuration file.
+- **eslint.config.mjs** - ESLint configuration using the flat config format.
+- **next.config.js** - Next.js configuration file.
+- **package.json** - Project dependencies and scripts.
+- **tailwind.config.js** - Tailwind CSS configuration file.
+- **tsconfig.json** - TypeScript configuration
 
 ### Database Schema
 
