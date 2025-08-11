@@ -1,14 +1,19 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, parse } from 'date-fns';
 import { FaChevronLeft, FaChevronRight, FaTimes, FaEdit, FaTrash } from 'react-icons/fa';
+import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
+import { Check } from 'lucide-react';
 
 interface Task {
-  id: string;
+  id: number;
   text: string;
   date: string;
   time: string;
+  createdAt: Date;
+  updatedAt: Date;
+  completed: boolean;
 }
 
 interface CalendarProps {
@@ -16,11 +21,10 @@ interface CalendarProps {
   onDateClick?: (date: Date) => void;
   onEditTask?: (task: Task) => void;
   onDeleteTask?: (task: Task) => void;
-  shouldReopenTaskModal?: { date: Date; shouldOpen: boolean };
-  onTaskModalReopened?: () => void;
+  onToggleTaskCompletion?: (taskId: number, checked: boolean) => void;
 }
 
-export function Calendar({ tasks, onDateClick, onEditTask, onDeleteTask, shouldReopenTaskModal, onTaskModalReopened }: CalendarProps) {
+export function Calendar({ tasks, onDateClick, onEditTask, onDeleteTask, onToggleTaskCompletion }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -46,14 +50,6 @@ export function Calendar({ tasks, onDateClick, onEditTask, onDeleteTask, shouldR
     setCurrentDate(new Date());
   };
 
-  // Effect to handle reopening task modal when edit is cancelled
-  useEffect(() => {
-    if (shouldReopenTaskModal?.shouldOpen && shouldReopenTaskModal.date) {
-      setSelectedDate(shouldReopenTaskModal.date);
-      setShowTaskModal(true);
-      onTaskModalReopened?.();
-    }
-  }, [shouldReopenTaskModal, onTaskModalReopened]);
 
   return (
     <div className="bg-white rounded-xl shadow-md p-6">
@@ -163,7 +159,7 @@ export function Calendar({ tasks, onDateClick, onEditTask, onDeleteTask, shouldR
       {/* Task Details Modal */}
       {showTaskModal && selectedDate && (
         <div className="fixed inset-0 overflow-y-auto h-full w-full z-50 backdrop-blur-sm">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white font-mono">
+          <div className="relative top-20 mx-auto p-5 border w-96 max-h-[80vh] overflow-y-auto shadow-lg rounded-md bg-white font-mono">
             <div className="flex justify-between items-center mb-3">
               <h3 className="text-lg leading-6 font-medium text-gray-900">
                 Tasks for {format(selectedDate, 'MMMM d, yyyy')}
@@ -179,12 +175,40 @@ export function Calendar({ tasks, onDateClick, onEditTask, onDeleteTask, shouldR
               {getTasksForDate(selectedDate).map((task) => (
                 <div key={task.id} className="p-3 bg-gray-50 rounded-lg">
                   <div className="flex justify-between items-start">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-900 break-words">{task.text}</div>
-                      <div className="text-sm text-gray-600 mt-1">
-                        Time: {format(parse(task.time, 'HH:mm', new Date()), 'h:mm a')}
+                    <label className="flex items-center">
+                      <CheckboxPrimitive.Root
+                        checked={task.completed}
+                        onCheckedChange={(checked) => {
+                          onToggleTaskCompletion?.(task.id, checked as boolean);
+                        }}
+                        className="mr-3 h-5 w-5 rounded-md border border-gray-400 flex items-center justify-center text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                        id={`task-${task.id}`}
+                      >
+                        <CheckboxPrimitive.Indicator>
+                          <Check className="h-4 w-4" />
+                        </CheckboxPrimitive.Indicator>
+                      </CheckboxPrimitive.Root>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 break-all whitespace-normal">{task.text}</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          Time: {(() => {
+                            try {
+                              if (task.time && typeof task.time === 'string' && task.time.trim() !== '') {
+                                // Handle both HH:mm and HH:mm:ss formats
+                                const timeFormat = task.time.includes(':') && task.time.split(':').length === 3 ? 'HH:mm:ss' : 'HH:mm';
+                                const timeDate = parse(task.time, timeFormat, new Date());
+                                return format(timeDate, 'h:mm a');
+                              } else {
+                                return 'No time set';
+                              }
+                            } catch (error) {
+                              console.error('Error parsing time in calendar:', task.time, error);
+                              return 'Invalid time';
+                            }
+                          })()}
+                        </div>
                       </div>
-                    </div>
+                    </label>
                     <div className="flex gap-2 ml-3">
                       <button
                         onClick={() => {
