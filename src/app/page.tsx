@@ -24,7 +24,7 @@ interface Task {
   time: string;
   createdAt: Date;
   updatedAt: Date;
-  completed: boolean;           // ← new
+  completed: boolean;
 }
 
 export default function Home() {
